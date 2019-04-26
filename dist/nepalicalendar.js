@@ -7,6 +7,7 @@ var calendarData = {
         nepaliNumbers: ["०", "१", "२", "३", "४", "५", "६", "७", "८", "९"],
         dtFormat:["d","dd","D","DD","m","mm","M","MM","yy","yyyy"],
         selectednpDate:{npYear:0,npMonth:0,npDay:0},
+        closeOnDateSelect:false,
         nepalicaledarData:{
             1949: [2005, 17, 30, 29, 30, 30, 31, 31, 32, 32, 31, 30, 30, 29, 30],
             1950: [2006, 18, 30, 29, 30, 30, 31, 32, 31, 32, 31, 30, 30, 30, 29],
@@ -148,7 +149,7 @@ var calendarData = {
                 NepaliCalendar.nepaliDate.endDate=npDate.endDate;
                 var dt= new Date();
                var np= NepaliCalendar.BSDate(dt.getFullYear(),dt.getMonth(), dt.getDate());
-               NepaliCalendar.nepaliDate.currentNpDate={npYear:np.npYear,npMonth:np.npMonth,npDay:np.npDay}
+                NepaliCalendar.nepaliDate.currentNpDate={npYear:np.npYear,npMonth:np.npMonth,npDay:np.npDay}
                 //previous Month
                 var pdate= new Date(year,month,day);
                 pdate.setDate(pdate.getDate()-npDate.npDaysInMonth);
@@ -247,7 +248,8 @@ var calendarData = {
     
     $.fn.nepaliDatePicker=function(option){
         NepaliCalendar.dateFormat=typeof option.dateFormat==undefined? option.dateFormat="dd/mm/yyyy":option.dateFormat;
-       var nepaliDatePickerPlugin={
+        NepaliCalendar.closeOnDateSelect=typeof option.closeOnDateSelect==undefined?false:option.closeOnDateSelect;
+        var nepaliDatePickerPlugin={
   
            init: function($element){
               
@@ -263,11 +265,12 @@ var calendarData = {
                $('.year-wise').hide();
                 nepaliDatePickerPlugin.addEventHandler($element,$nepaliDatePicker);
                nepaliDatePickerPlugin.addCommonEventHandler($element,$nepaliDatePicker);
-               NepaliCalendar.nepaliDate.currentNpDate={npYear:NepaliCalendar.npDate.npYear,npMonth:NepaliCalendar.npDate.npMonth,npDay:NepaliCalendar.npDate.npDay}
+              // NepaliCalendar.nepaliDate.currentNpDate={npYear:NepaliCalendar.npDate.npYear,npMonth:NepaliCalendar.npDate.npMonth,npDay:NepaliCalendar.npDate.npDay}
                //   nepalicaledarData.nepaliDate.currentNpDate = {npYear=nepalicaledarData.nepaliDate.npYear,npMonth=nepalicaledarData.nepaliDate.npMonth,npDay=nepalicaledarData.nepaliDate.npDay}
               // nepaliDatePickerPlugin.setCalendarHeader($element);
             },
                 addEventHandler: function ($element,$nepaliDatePicker) {
+                 
                 $element.unbind().click(function (e) {
                     e.preventDefault()
                   
@@ -289,7 +292,6 @@ var calendarData = {
                     if ($targetElement.attr('en-date') && $targetElement.val()!="") {
                         var date=new Date(parseInt($targetElement.attr('en-date')));
                         var nepalidate=NepaliCalendar.getBSDate(date.getFullYear(),date.getMonth(), date.getDate());
-                        calendarData.selectednpDate={npYear:nepalidate.npYear,npMonth:nepalidate.npMonth+1,npDay:nepalidate.npDay};
                         nepaliDatePickerPlugin.rendarCalendar($nepaliDatePicker,date);
                         $('.year-wise').hide();
                         $('.month-wise').hide();
@@ -305,7 +307,9 @@ var calendarData = {
             },
             addCommonEventHandler: function ($element, $nepaliDatePicker) {
                 var $datePickerWrapper = $(".nepali-date-picker");
-                    
+                $element.keyup(function (e){
+                  //validateNepalidate
+                })  
                 $element.click(function (e) {
                     e.stopPropagation();
                     var $obj=$(this);
@@ -315,10 +319,12 @@ var calendarData = {
                         if(typeof event.target.attributes['data-npdate']!="undefined"){
                             if($obj.is(".date-Picker")){
                                 var npDate= nepaliDatePickerPlugin.getFormatednpDate(event.target.attributes['data-endate'].value);
+                                calendarData.selectednpDate={npYear:NepaliCalendar.nepaliDate.npYear,npMonth:NepaliCalendar.nepaliDate.npMonth,npDay:NepaliCalendar.nepaliDate.npDay};
                                 $obj.attr('en-Date',event.target.attributes['data-endate'].value);
                                 $obj.val(npDate);
                                 $('.day').removeClass('active');
                                 $targetElement.addClass('active');
+                                if(NepaliCalendar.closeOnDateSelect)$(".nepali-date-picker").hide();
                                 return;
                             }
                         }
@@ -343,11 +349,21 @@ var calendarData = {
                                  nepaliDatePickerPlugin.rendarCalendar($nepaliDatePicker,dt);
 
                             }else if($targetElement.hasClass('today')){
+                                calendarData.selectednpDate={npYear:NepaliCalendar.nepaliDate.currentNpDate.npYear,npMonth:NepaliCalendar.nepaliDate.currentNpDate.npMonth,npDay:NepaliCalendar.nepaliDate.currentNpDate.npDay};
                                 nepaliDatePickerPlugin.navigateCurrentDate($nepaliDatePicker);
+                                var npDate= nepaliDatePickerPlugin.getFormatednpDate(Date.parse(NepaliCalendar.nepaliDate.currentDate));
+                                $obj.attr('en-Date',Date.parse(NepaliCalendar.nepaliDate.currentDate));
+                                $obj.val(npDate);
+                                if(NepaliCalendar.closeOnDateSelect)$(".nepali-date-picker").hide();
+                                return;
                             }
                             else if(!$targetElement.hasClass('next') && !$targetElement.hasClass('prev')){
                                 NepaliCalendar.nepaliDate.today=new Date();
                                 nepaliDatePickerPlugin.resetCalendar($nepaliDatePicker);
+                                if(typeof $obj.attr('en-Date')!=undefined){
+                                    var npDate= nepaliDatePickerPlugin.getFormatednpDate($obj.attr('en-Date'));
+                                    $obj.val(npDate);
+                                }
                                 $datePickerWrapper.hide();
                                 $datePickerWrapper.find(".drop-down-content").hide();
                             }else if($targetElement.hasClass('next')){
@@ -445,12 +461,16 @@ var calendarData = {
                         dtBody+='<td class="new day" data-endate="'+ ceDate.setDate(ceDate.getDate() +1 ) +'" data-npdate="'+ nDate.npYear +'-'+ nDate.npMonth +'-'+ nxtdate  +'">'+ nepaliDatePickerPlugin.getNepaliNumber(nxtdate) +'</td>'
                         nxtdate++;
                     }else{
-                        if(nepalidate.npYear==nepalidate.currentNpDate.npYear && nepalidate.npMonth==nepalidate.currentNpDate.npMonth && (i-(startingDay-1))==nepalidate.currentNpDate.npDay){
-                            dtBody+='<td class="day today" data-endate="'+ ceDate.setDate(ceDate.getDate() +1 ) +'" data-npdate="'+ nepalidate.npYear +'-'+ nepalidate.npMonth +'-'+ (i-startingDay+1)  +'">' +  nepaliDatePickerPlugin.getNepaliNumber(i-(startingDay-1)) +'</td>';
-                        }
                         
-                        else if(nepalidate.npYear==calendarData.selectednpDate.npYear && nepalidate.npMonth==calendarData.selectednpDate.npMonth-1 && (i-(startingDay-1))==calendarData.selectednpDate.npDay){
-                            dtBody+='<td class="day active" data-endate="'+ ceDate.setDate(ceDate.getDate() +1 ) +'" data-npdate="'+ nepalidate.npYear +'-'+ nepalidate.npMonth +'-'+ (i-startingDay+1)  +'">' +  nepaliDatePickerPlugin.getNepaliNumber(i-(startingDay-1)) +'</td>';
+                        if(nepalidate.npYear==calendarData.selectednpDate.npYear && nepalidate.npMonth==(calendarData.selectednpDate.npMonth) && (i-(startingDay-1))==calendarData.selectednpDate.npDay){
+                           var  $td=$('<td class="day active" data-endate="'+ ceDate.setDate(ceDate.getDate() +1 ) +'" data-npdate="'+ nepalidate.npYear +'-'+ nepalidate.npMonth +'-'+ (i-startingDay+1)  +'">' +  nepaliDatePickerPlugin.getNepaliNumber(i-(startingDay-1)) +'</td>');
+                            if(nepalidate.npYear==nepalidate.currentNpDate.npYear && nepalidate.npMonth==nepalidate.currentNpDate.npMonth && (i-(startingDay-1))==nepalidate.currentNpDate.npDay){
+                                $td.addClass('today');
+                            }
+                            dtBody+=($td)[0].outerHTML;
+                        }
+                        else if(nepalidate.npYear==nepalidate.currentNpDate.npYear && nepalidate.npMonth==nepalidate.currentNpDate.npMonth && (i-(startingDay-1))==nepalidate.currentNpDate.npDay){
+                            dtBody+='<td class="day today" data-endate="'+ ceDate.setDate(ceDate.getDate() +1 ) +'" data-npdate="'+ nepalidate.npYear +'-'+ nepalidate.npMonth +'-'+ (i-startingDay+1)  +'">' +  nepaliDatePickerPlugin.getNepaliNumber(i-(startingDay-1)) +'</td>';
                         }
                         else
                         dtBody+='<td class="day" data-endate="'+ ceDate.setDate(ceDate.getDate() +1 ) +'" data-npdate="'+ nepalidate.npYear +'-'+ nepalidate.npMonth +'-'+ (i-startingDay+1)  +'">' +  nepaliDatePickerPlugin.getNepaliNumber(i-(startingDay-1)) +'</td>';
@@ -607,7 +627,6 @@ var calendarData = {
              getFormatednpDate:function(dt){
                  var date=new Date(parseInt(dt));
                var nepalidate=NepaliCalendar.getBSDate(date.getFullYear(),date.getMonth(), date.getDate());
-               calendarData.selectednpDate={npYear:nepalidate.npYear,npMonth:nepalidate.npMonth+1,npDay:nepalidate.npDay};
                 var ary=[];
                 var dtArray=[];
                 var dateFormat=NepaliCalendar.dateFormat;
